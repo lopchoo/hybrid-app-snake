@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #canvas {
+            width: 800px;
+            height: 800px;
+            border: 1px solid black;
+
+        }
+
+        .container {
+            width: 1200;
+            display: flex;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <span id="timer">시간 : </span><span id="tailLength">꼬리 길이 : </span>
+    </div>
+    <div class="container">
+        <canvas id="canvas" width="800" height="800">
+
+        </canvas>
+
+        <div>
+            <p>
+                플레이 방법<br />
+                -플레이어캐릭터는 마우스를 따라다닙니다. <br />
+                -빨간 것은 먹이 입니다.<br />
+                -파란 것은 장애물 입니다. 머리가 부딪치면 게임 오버입니다.<br />
+            </p>
+            <button onclick="Initialize()">게임시작</button>
+        </div>
+    </div>
+</body>
+<script>
+    let canvas = document.getElementById("canvas")
+    let ctx = canvas.getContext("2d")
+    //#region 플레이어 영역
+
+    class player {
+        // 플레이어 기본 생성 위치.
+        playerPosX = 400;
+        playerPosY = 400;
+
+        // 플레이어가 이동할 방향.
+        dirX = 0;
+        dirY = 0;
+
+        speed = 1;
+
+        constructor() {
+            this.playerPosY = 400
+            this.playerPosX = 400
+
+            this.dirX = 0
+            this.dirY = 0
+
+            this.speed = 1
+        }
+        //머리의 이동좌표. (벡터 계산.)
+        UpdateCharPos() {
+            this.dirX = mousePosX - this.playerPosX
+            this.dirY = mousePosY - this.playerPosY
+
+
+
+            let scalar = Math.sqrt((this.dirX * this.dirX) + (this.dirY * this.dirY))
+
+            this.dirX /= scalar
+            this.dirY /= scalar
+
+
+            if (scalar > 20) {
+                this.playerPosX += this.dirX * this.speed;
+                this.playerPosY += this.dirY * this.speed
+            }
+
+
+        }
+        //꼬리~머리 간의 이동 좌표 계산. (벡터 계산)
+        UpdateCharPos2(beforePosX, beforePosY) {
+            this.dirX = beforePosX - this.playerPosX
+            this.dirY = beforePosY - this.playerPosY
+
+            let scalar = Math.sqrt((this.dirX * this.dirX) + (this.dirY * this.dirY))
+
+            this.dirX /= scalar
+            this.dirY /= scalar
+
+            if (!speedUp) {
+                if (scalar > 20) {
+                    this.playerPosX += this.dirX * this.speed;
+                    this.playerPosY += this.dirY * this.speed
+                }
+            }
+
+            else {
+                if (scalar > 40) {
+                    this.playerPosX += (this.dirX * this.speed);
+                    this.playerPosY += (this.dirY * this.speed);
+                }
+            }
+        }
+        DrawPlayer() {
+
+            ctx.beginPath()
+
+            ctx.arc(this.playerPosX, this.playerPosY, 20, 0, 2 * Math.PI);
+            ctx.fillStyle = "black"
+
+            ctx.fill()
+        }
+    }
+
+
+    // 꼬리 간의 거리 계산.
+    function SetTaleDistance(index) {
+        var beforeIDX = index - 1;
+        // 게임 시작전에는 세로로 뱀의 몸을 늘여 놓는다.
+        if (gameStarted == false) playerObj[index].playerPosY = playerObj[beforeIDX].playerPosY + (20 * 2 / 3);
+
+        else {
+            //#region Y좌표 계산 영역.
+            // 계산식: 기존 좌표 + or - 설정할 거리값 (기존 꼬리의 1/3만 가릴 것)
+            if (mousePosY < playerObj[beforeIDX].playerPosY) playerObj[index].playerPosY = playerObj[beforeIDX].playerPosY + (20 * 2 / 3);
+            else if (mousePosY > playerObj[beforeIDX].playerPosY) playerObj[index].playerPosY = playerObj[beforeIDX].playerPosY - (20 * 2 / 3);
+            //#endregion
+
+            //#region X좌표 계산영역
+            // 계산식: 기존 좌표 + or - 설정할 거리값 (기존 꼬리의 1/3만 가릴 것)
+            if (mousePosX > playerObj[beforeIDX].playerPosX) playerObj[index].playerPosX = playerObj[beforeIDX].playerPosX - (20 * 2 / 3);
+            else if (mousePosX < playerObj[beforeIDX].playerPosX) playerObj[index].playerPosX = playerObj[beforeIDX].playerPosX + (20 * 2 / 3);
+            //#endregion
+        }
+    }
+
+    // 꼬리 추가 함수.
+    function AddTale() {
+        playerObj.push(new player())
+        SetTaleDistance(playerObj.length - 1)
+    }
+
+    function IncreaseSpeed() {
+        if (speedUp) {
+            for (var i = 0; i < playerObj.length; i++) {
+                playerObj[i].speed = 3;
+            }
+        }
+        else {
+            for (var i = 0; i < playerObj.length; i++
+            ) {
+                playerObj[i].speed = 1;
+            }
+        }
+    }
+
+    // document.addEventListener("mousedown", AddTale) 꼬리 추가 테스트 코드
+    let playerObj = [];
+    let speedUp = false;
+
+
+    //#endregion
+
+    //#region 먹이 영역
+    class Food {
+        x
+        y
+        constructor() {
+            this.x = 0;
+            this.y = 0;
+        }
+
+        SetPosition() {
+            this.x = Math.random() * (773 - 23) + 23
+            this.y = Math.random() * (773 - 23) + 23
+        }
+
+        DrawFood() {
+            ctx.beginPath()
+            ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = "red"
+            ctx.fill()
+        }
+
+        //  먹이와 플레이어 헤드 간의 거리 계산.
+        CheckDistance() {
+            var playerHead = playerObj[0]
+
+            // 대상 좌표 - 다가오는 것의 좌표. 만약 해당좌표가 -20 식으로 나오는 것을 대비해, 절대값으로 변경.
+            var x = this.x - playerHead.playerPosX < 0 ? ((this.x - playerHead.playerPosX) * -1) : this.x - playerHead.playerPosX
+            var y = this.y - playerHead.playerPosY < 0 ? ((this.y - playerHead.playerPosY) * -1) : this.y - playerHead.playerPosY
+            var distance = [x, y]
+
+            return distance;
+        }
+    }
+    let countOfFood = Math.random() * (5 - 1) + 1;
+    let food = []
+    //#endregion
+
+    //#region 장애물 영역
+    let trapSpeed = 1;
+    class Trap {
+        x
+        y
+        type
+        moveDirX
+        moveDirY
+        angle
+        constructor(type) {
+            this.type = type
+            this.x = 0
+            this.y = 0
+            this.angle = 0;
+        }
+
+        SetPosition() {
+            this.x = Math.random() * (810 - -10) + -10
+            this.y = Math.random() * (810 - -10) + -10
+
+            var isWid = Math.random() * 2 < 0.5 ? true : false
+            var isUpOrLeft = Math.random() * 2 < 0.5 ? true : false
+            if (isWid) {
+                if (isUpOrLeft) {
+                    this.x = -10;
+                    this.moveDirX = 810
+                    this.moveDirY = Math.random() * (810 - -10) + -10
+
+                }
+
+                else {
+                    this.x = 810
+                    this.moveDirX = 0
+                    this.moveDirY = Math.random() * (810 - -10) + -10
+                }
+            }
+
+            else {
+                if (isUpOrLeft) {
+                    this.y = -10
+                    this.moveDirX = Math.random() * (810 - -10) + -10
+                    this.moveDirY = 810
+                }
+
+                else {
+                    this.y = 810
+                    this.moveDirX = Math.random() * (810 - -10) + -10
+                    this.moveDirY = 0
+                }
+            }
+        }
+
+        UpdateTrapPos() {
+            this.dirX = this.moveDirX - this.x
+            this.dirY = this.moveDirY - this.y
+
+
+            let scalar = Math.sqrt((this.dirX * this.dirX) + (this.dirY * this.dirY))
+
+            this.dirX /= scalar
+            this.dirY /= scalar
+
+            if (scalar >= 0) {
+                this.x += this.dirX * trapSpeed
+                this.y += this.dirY * trapSpeed
+            }
+            if (scalar <= 1) {
+                this.SetPosition()
+            }
+        }
+
+
+        DrawTrap() {
+
+            ctx.beginPath()
+            ctx.save()
+
+            ctx.translate(this.x, this.y)
+            ctx.rotate(this.angle)
+            ctx.translate(-this.x, - this.y)
+            if (this.type == "circle") {
+                this.angle += 10 * (180 / Math.PI)
+                ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+            }
+
+            else if (this.type == "triangle") {
+                this.angle += 5 * (180 / Math.PI)
+                DrawTriangle(this.x, this.y)
+            }
+
+            else {
+                this.angle += 5 * (180 / Math.PI)
+
+                ctx.rect(this.x, this.y, 10, 10);
+            }
+            ctx.fillStyle = "blue"
+            ctx.fill()
+
+            ctx.restore()
+
+        }
+
+        // 장애물과 플레이어 헤드 간의 거리 계산.
+        CheckDistance() {
+            var playerHead = playerObj[0]
+
+            // 대상 좌표 - 다가오는 것의 좌표. 만약 해당좌표가 -20 식으로 나오는 것을 대비해, 절대값으로 변경.
+            var x = this.x - playerHead.playerPosX < 0 ? ((this.x - playerHead.playerPosX) * -1) : this.x - playerHead.playerPosX
+            var y = this.y - playerHead.playerPosY < 0 ? ((this.y - playerHead.playerPosY) * -1) : this.y - playerHead.playerPosY
+            var distance = [x, y]
+
+            return distance;
+        }
+    }
+
+    function DrawTriangle(x, y) {
+        ctx.moveTo(x, y)
+        ctx.lineTo(x + 5, y + 5)
+        ctx.lineTo(x - 5, y + 5)
+    }
+    let startCount = Math.random() * (10 - 5) + 5
+    let traps = []
+    let trapTypes = ["triangle", "circle", "rectangle"]
+    let speedAddTime = 0;
+
+    function GiveType() {
+        return trapTypes[Math.floor(Math.random() * 3)]
+    }
+    //#endregion
+
+    //#region 조작 관련.
+    var mousePosX
+    var mousePosY
+
+    document.addEventListener("mousemove", MoveMouse)
+
+    document.addEventListener("mousedown", () => {
+        speedUp = true;
+
+    })
+
+    document.addEventListener("mouseup", () => {
+        speedUp = false;
+    })
+
+    // 마우스 이동함수.
+    function MoveMouse(e) {
+
+        mousePosX = e.clientX
+        mousePosY = e.clientY
+
+        if (mousePosX < 23)
+            mousePosX = 23
+        if (mousePosX > 773)
+            mousePosX = 773
+
+        if (mousePosY < 23)
+            mousePosY = 23
+        if (mousePosY > 773)
+            mousePosY = 773
+    }
+
+    //#endregion
+
+    //#region 엔진 함수.
+    let gameStarted = false; // 마우스 이동전 까지 게임 플레이 전으로 간주
+    let gameOver = false; // 게임 오버 영역.
+
+    let tailLength = document.getElementById("tailLength")
+    let timer = document.getElementById("timer")
+    let time = 0;
+    function Initialize() {
+        if (gameOver || !gameStarted) {
+            playerObj = []
+            food = []
+            traps = []
+
+            var newPlayer = new player() // 머리 생성.
+            playerObj.push(newPlayer) // 추가.
+            gameOver = false;
+
+            for (var i = 1; i < 3; i++) {
+                AddTale() // 꼬리 추가.
+            }
+            for (var i = 0; i < countOfFood; i++) {
+                food.push(new Food())
+                food[i].SetPosition()
+            }
+
+            for (var i = 0; i < startCount; i++) {
+                traps.push(new Trap(GiveType()))
+                traps[i].SetPosition()
+            }
+            time = 0;
+            speedUp = false
+            gameStarted = true
+        }
+    }
+
+    function Gameloop() {
+
+        if (gameStarted && !gameOver) {
+            ctx.clearRect(0, 0, 800, 800)
+
+            // 플레이어 캐릭터 용 반복
+            for (var i = 0; i < playerObj.length; i++) {
+                if (i == 0) {
+                    playerObj[i].UpdateCharPos()
+                }
+                else {
+                    playerObj[i].UpdateCharPos2(playerObj[i - 1].playerPosX, playerObj[i - 1].playerPosY)
+                }
+                playerObj[i].DrawPlayer()
+            }
+
+            // 트랩용 반복
+            for (var i = 0; i < traps.length; i++) {
+                traps[i].UpdateTrapPos()
+                var distance = traps[i].CheckDistance();
+                if (distance[0] < 20 && distance[1] < 20) {
+                    gameOver = true;
+                }
+                traps[i].DrawTrap()
+            }
+
+            // 좌클릭시 속도 증가 연산.
+            IncreaseSpeed()
+
+            // 
+            food.forEach(element => {
+                element.DrawFood();
+                var distance = element.CheckDistance()
+
+                if (distance[0] < 20 && distance[1] < 20) {
+                    AddTale();
+                    element.SetPosition();
+                }
+            });
+            speedAddTime += 1;
+            if (speedAddTime >= 60) {
+                speedAddTime = 0;
+                traps.push(new Trap(GiveType()))
+
+                traps.forEach(element => {
+                    element.speed += 1;
+                });
+            }
+            tailLength.innerText = "꼬리 길이 : " + playerObj.length
+        }
+        else if (gameOver) {
+            var retry = confirm("다시 플레이 하시겠습니까?")
+            if (retry) {
+                Initialize()
+            }
+
+            else {
+                return;
+            }
+        }
+    }
+    //#endregion
+
+    setInterval(Gameloop, 1000 / 60)
+    setInterval(() => { if (gameStarted) { timer.innerText = "시간 : " + time++ } })
+
+</script>
+
+</html>
